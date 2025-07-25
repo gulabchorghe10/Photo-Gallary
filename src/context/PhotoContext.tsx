@@ -10,6 +10,7 @@ export interface Photo {
   addedAt: Date;
   deletedAt?: Date;
   status: 'active' | 'deleted' | 'permanently-deleted';
+  source: 'upload' | 'camera';
 }
 
 interface PhotoState {
@@ -99,13 +100,15 @@ function photoReducer(state: PhotoState, action: PhotoAction): PhotoState {
 
 interface PhotoContextType {
   state: PhotoState;
-  addPhotos: (files: File[]) => void;
+  addPhotos: (files: File[], source?: 'upload' | 'camera') => void;
   deletePhoto: (id: string) => void;
   restorePhoto: (id: string) => void;
   permanentlyDeletePhoto: (id: string) => void;
   setSelectedPhoto: (photo: Photo | null) => void;
   getActivePhotos: () => Photo[];
   getDeletedPhotos: () => Photo[];
+  getCameraPhotos: () => Photo[];
+  getUploadedPhotos: () => Photo[];
   getPhotoTimeInfo: (photo: Photo) => { addedText: string; deletedText?: string };
 }
 
@@ -149,7 +152,7 @@ export function PhotoProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, []);
 
-  const addPhotos = async (files: File[]) => {
+  const addPhotos = async (files: File[], source: 'upload' | 'camera' = 'upload') => {
     dispatch({ type: 'SET_LOADING', payload: true });
     
     const newPhotos: Photo[] = [];
@@ -167,6 +170,7 @@ export function PhotoProvider({ children }: { children: React.ReactNode }) {
           size: file.size,
           addedAt: new Date(),
           status: 'active',
+          source,
         });
       }
     }
@@ -202,6 +206,14 @@ export function PhotoProvider({ children }: { children: React.ReactNode }) {
     return state.photos.filter(photo => photo.status === 'deleted');
   };
 
+  const getCameraPhotos = () => {
+    return state.photos.filter(photo => photo.status === 'active' && photo.source === 'camera');
+  };
+
+  const getUploadedPhotos = () => {
+    return state.photos.filter(photo => photo.status === 'active' && photo.source === 'upload');
+  };
+
   const getPhotoTimeInfo = (photo: Photo) => {
     const addedText = formatDistanceToNow(photo.addedAt, { addSuffix: true });
     const deletedText = photo.deletedAt 
@@ -222,6 +234,8 @@ export function PhotoProvider({ children }: { children: React.ReactNode }) {
         setSelectedPhoto,
         getActivePhotos,
         getDeletedPhotos,
+        getCameraPhotos,
+        getUploadedPhotos,
         getPhotoTimeInfo,
       }}
     >

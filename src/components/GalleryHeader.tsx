@@ -5,15 +5,18 @@ import { ThemeToggle } from './ThemeToggle';
 import { usePhoto } from '@/context/PhotoContext';
 
 interface GalleryHeaderProps {
-  currentView: 'gallery' | 'trash';
-  onViewChange: (view: 'gallery' | 'trash') => void;
+  currentView: 'gallery' | 'trash' | 'camera';
+  onViewChange: (view: 'gallery' | 'trash' | 'camera') => void;
+  onCameraClick: () => void;
 }
 
-export function GalleryHeader({ currentView, onViewChange }: GalleryHeaderProps) {
-  const { getActivePhotos, getDeletedPhotos } = usePhoto();
+export function GalleryHeader({ currentView, onViewChange, onCameraClick }: GalleryHeaderProps) {
+  const { getActivePhotos, getDeletedPhotos, getCameraPhotos, getUploadedPhotos } = usePhoto();
   
   const activeCount = getActivePhotos().length;
   const deletedCount = getDeletedPhotos().length;
+  const cameraCount = getCameraPhotos().length;
+  const uploadCount = getUploadedPhotos().length;
 
   return (
     <motion.header
@@ -25,13 +28,14 @@ export function GalleryHeader({ currentView, onViewChange }: GalleryHeaderProps)
         <div className="flex items-center justify-between h-16">
           {/* Logo and title */}
           <div className="flex items-center space-x-4">
-            <motion.div
-              className="w-10 h-10 rounded-2xl bg-gradient-primary flex items-center justify-center"
+            <motion.button
+              onClick={onCameraClick}
+              className="w-10 h-10 rounded-2xl bg-gradient-primary flex items-center justify-center cursor-pointer"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
               <Camera className="w-6 h-6 text-white" />
-            </motion.div>
+            </motion.button>
             
             <div>
               <h1 className="text-2xl font-bold text-foreground">SnapStash</h1>
@@ -55,10 +59,30 @@ export function GalleryHeader({ currentView, onViewChange }: GalleryHeaderProps)
               `}
             >
               <Camera className="w-4 h-4" />
-              <span>Gallery</span>
-              {activeCount > 0 && (
+              <span>Uploads</span>
+              {uploadCount > 0 && (
                 <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-primary-glow text-white">
-                  {activeCount}
+                  {uploadCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => onViewChange('camera')}
+              className={`
+                flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium
+                transition-all duration-200 relative
+                ${currentView === 'camera'
+                  ? 'text-primary-foreground bg-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+                }
+              `}
+            >
+              <Camera className="w-4 h-4" />
+              <span>Camera</span>
+              {cameraCount > 0 && (
+                <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-green-500 text-white">
+                  {cameraCount}
                 </span>
               )}
             </button>

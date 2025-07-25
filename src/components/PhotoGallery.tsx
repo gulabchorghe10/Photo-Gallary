@@ -5,24 +5,37 @@ import { GalleryHeader } from './GalleryHeader';
 import { PhotoUpload } from './PhotoUpload';
 import { PhotoGrid } from './PhotoGrid';
 import { PhotoModal } from './PhotoModal';
+import { CameraCapture } from './CameraCapture';
 import { Trash2, Camera } from 'lucide-react';
 
 function GalleryContent() {
-  const [currentView, setCurrentView] = useState<'gallery' | 'trash'>('gallery');
-  const { state, setSelectedPhoto, getActivePhotos, getDeletedPhotos } = usePhoto();
+  const [currentView, setCurrentView] = useState<'gallery' | 'trash' | 'camera'>('gallery');
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const { state, setSelectedPhoto, getActivePhotos, getDeletedPhotos, getCameraPhotos, getUploadedPhotos } = usePhoto();
 
   const activePhotos = getActivePhotos();
   const deletedPhotos = getDeletedPhotos();
+  const cameraPhotos = getCameraPhotos();
+  const uploadedPhotos = getUploadedPhotos();
 
   const handleCloseModal = () => {
     setSelectedPhoto(null);
+  };
+
+  const handleCameraClick = () => {
+    setIsCameraOpen(true);
+  };
+
+  const handleCloseCameraCapture = () => {
+    setIsCameraOpen(false);
   };
 
   return (
     <div className="min-h-screen bg-gallery-bg">
       <GalleryHeader 
         currentView={currentView} 
-        onViewChange={setCurrentView} 
+        onViewChange={setCurrentView}
+        onCameraClick={handleCameraClick}
       />
       
       <main className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -38,10 +51,10 @@ function GalleryContent() {
             >
               <PhotoUpload />
               
-              {activePhotos.length > 0 ? (
+              {uploadedPhotos.length > 0 ? (
                 <PhotoGrid
-                  photos={activePhotos}
-                  emptyMessage="No photos in your gallery yet. Upload some to get started!"
+                  photos={uploadedPhotos}
+                  emptyMessage="No uploaded photos yet. Upload some to get started!"
                 />
               ) : !state.loading && (
                 <motion.div
@@ -51,10 +64,49 @@ function GalleryContent() {
                 >
                   <Camera className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-xl font-semibold text-foreground mb-2">
-                    No photos yet
+                    No uploaded photos yet
                   </h3>
                   <p className="text-muted-foreground">
                     Upload your first photos to start building your collection
+                  </p>
+                </motion.div>
+              )}
+            </motion.div>
+          ) : currentView === 'camera' ? (
+            <motion.div
+              key="camera"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-8"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-3xl font-bold text-foreground mb-2">Camera Photos</h2>
+                  <p className="text-muted-foreground">
+                    Photos captured using your device camera
+                  </p>
+                </div>
+              </div>
+
+              {cameraPhotos.length > 0 ? (
+                <PhotoGrid
+                  photos={cameraPhotos}
+                  emptyMessage="No camera photos yet"
+                />
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center py-16"
+                >
+                  <Camera className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-semibold text-foreground mb-2">
+                    No camera photos yet
+                  </h3>
+                  <p className="text-muted-foreground">
+                    Click the camera icon in the header to take your first photo
                   </p>
                 </motion.div>
               )}
@@ -124,6 +176,12 @@ function GalleryContent() {
         photo={state.selectedPhoto}
         isOpen={!!state.selectedPhoto}
         onClose={handleCloseModal}
+      />
+
+      {/* Camera capture */}
+      <CameraCapture
+        isOpen={isCameraOpen}
+        onClose={handleCloseCameraCapture}
       />
     </div>
   );
