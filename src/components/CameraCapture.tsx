@@ -95,7 +95,7 @@ export function CameraCapture({ isOpen, onClose }: CameraCaptureProps) {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const file = new File([blob], `camera-${timestamp}.jpg`, { type: 'image/jpeg' });
       
-      await addPhotos([file]);
+      await addPhotos([file], 'camera');
       
       toast({
         title: "Photo Saved",
