@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Trash2, RotateCcw, Calendar, HardDrive } from 'lucide-react';
 import { Photo, usePhoto } from '@/context/PhotoContext';
@@ -9,29 +9,92 @@ interface PhotoModalProps {
   photo: Photo | null;
   isOpen: boolean;
   onClose: () => void;
+  photoList?: Photo[];
+  setSelectedPhoto?: (photo: Photo) => void;
 }
 
-export function PhotoModal({ photo, isOpen, onClose }: PhotoModalProps) {
+export function PhotoModal({ photo, isOpen, onClose, photoList, setSelectedPhoto }: PhotoModalProps) {
   const { deletePhoto, restorePhoto, getPhotoTimeInfo } = usePhoto();
   const { toast } = useToast();
+  const [zoom, setZoom] = useState(1);
+  const [origin, setOrigin] = useState<'center' | { x: number; y: number }>('center');
+  const [imgRect, setImgRect] = useState<DOMRect | null>(null);
+  const imgRef = React.useRef<HTMLImageElement>(null);
+
+  // Reset zoom when modal closes or photo changes
+  useEffect(() => {
+    if (!isOpen) setZoom(1);
+    setOrigin('center');
+  }, [isOpen]);
+  useEffect(() => {
+    setZoom(1);
+    setOrigin('center');
+  }, [photo]);
+
+  // Helper to get relative position in percent
+  const getRelativePos = (clientX: number, clientY: number) => {
+    if (!imgRect) return { x: 50, y: 50 };
+    const x = ((clientX - imgRect.left) / imgRect.width) * 100;
+    const y = ((clientY - imgRect.top) / imgRect.height) * 100;
+    return { x, y };
+  };
+
+  // Mouse move/touch move handler
+  const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!imgRect) return;
+    let clientX = 0, clientY = 0;
+    if ('touches' in e && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else if ('clientX' in e) {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    setOrigin(getRelativePos(clientX, clientY));
+  };
+
+  // Update imgRect on mount/resize
+  useEffect(() => {
+    const updateRect = () => {
+      if (imgRef.current) setImgRect(imgRef.current.getBoundingClientRect());
+    };
+    updateRect();
+    window.addEventListener('resize', updateRect);
+    return () => window.removeEventListener('resize', updateRect);
+  }, [isOpen, photo]);
 
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
       }
+      if (photoList && setSelectedPhoto && photo) {
+        const idx = photoList.findIndex(p => p.id === photo.id);
+        if (e.key === 'ArrowLeft') {
+          if (idx > 0) setSelectedPhoto(photoList[idx - 1]);
+        }
+        if (e.key === 'ArrowRight') {
+          if (idx < photoList.length - 1) setSelectedPhoto(photoList[idx + 1]);
+        }
+      }
+      if (e.key === '+') {
+        setZoom(z => Math.min(z + 0.2, 3));
+        setOrigin('center');
+      }
+      if (e.key === '-') {
+        setZoom(z => Math.max(z - 0.2, 0.5));
+        setOrigin('center');
+      }
     };
-
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
+      document.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
     }
-
     return () => {
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, photo, photoList, setSelectedPhoto]);
 
   if (!photo) return null;
 
@@ -161,14 +224,54 @@ export function PhotoModal({ photo, isOpen, onClose }: PhotoModalProps) {
             
             {/* Image */}
             <div className="flex">
-              <div className="flex-1 flex items-center justify-center p-4 bg-gallery-bg">
+              <div className="flex-1 flex items-center justify-center p-4 bg-gallery-bg relative">
+                {/* Zoom controls */}
+                <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                  <button
+                    className="w-10 h-10 rounded-full bg-white/80 hover:bg-white text-2xl font-bold shadow border border-gray-200"
+                    onClick={e => {
+                      if (imgRect) {
+                        setOrigin(origin === 'center' ? 'center' : origin);
+                      }
+                      setZoom(z => Math.min(z + 0.2, 3));
+                    }}
+                    aria-label="Zoom in"
+                  >
+                    +
+                  </button>
+                  <button
+                    className="w-10 h-10 rounded-full bg-white/80 hover:bg-white text-2xl font-bold shadow border border-gray-200"
+                    onClick={e => {
+                      if (imgRect) {
+                        setOrigin(origin === 'center' ? 'center' : origin);
+                      }
+                      setZoom(z => Math.max(z - 0.2, 0.5));
+                    }}
+                    aria-label="Zoom out"
+                  >
+                    –
+                  </button>
+                </div>
                 <motion.img
+                  ref={imgRef}
                   initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  animate={{ opacity: 1, scale: zoom }}
                   transition={{ delay: 0.1 }}
                   src={photo.url}
                   alt={photo.name}
                   className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-lg"
+                  style={{
+                    transform: `scale(${zoom})`,
+                    transformOrigin: origin === 'center' ? '50% 50%' : `${origin.x}% ${origin.y}%`
+                  }}
+                  onMouseMove={handlePointerMove}
+                  onTouchMove={handlePointerMove}
+                  onMouseDown={e => {
+                    if (imgRef.current) setImgRect(imgRef.current.getBoundingClientRect());
+                  }}
+                  onTouchStart={e => {
+                    if (imgRef.current) setImgRect(imgRef.current.getBoundingClientRect());
+                  }}
                 />
               </div>
               

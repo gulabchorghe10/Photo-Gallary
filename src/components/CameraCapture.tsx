@@ -31,8 +31,15 @@ export function CameraCapture({ isOpen, onClose }: CameraCaptureProps) {
         video: {
           facingMode,
           width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        }
+          height: { ideal: 1080 },
+          // Prevent browser from using any cached/cached device
+          // See: https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints/advanced
+          advanced: [{ noiseSuppression: false, echoCancellation: false }]
+        },
+        // Always request a fresh stream
+        // Not all browsers support this, but it helps avoid cache
+        // See: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+        // No direct cache: false, but we avoid reusing tracks
       });
 
       if (videoRef.current) {
@@ -88,7 +95,7 @@ export function CameraCapture({ isOpen, onClose }: CameraCaptureProps) {
 
     try {
       // Convert data URL to blob
-      const response = await fetch(capturedImage);
+      const response = await fetch(capturedImage, { cache: 'no-store' });
       const blob = await response.blob();
       
       // Create file from blob

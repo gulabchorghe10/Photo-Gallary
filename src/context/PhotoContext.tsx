@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { photoDB } from '@/lib/database';
+import { DatabasePhoto } from '@/lib/supabase';
 
 export interface Photo {
   id: string;
   url: string;
-  file: File;
+  file?: File; // Optional since we don't always have the file object
   name: string;
   size: number;
   addedAt: Date;
@@ -117,24 +119,51 @@ const PhotoContext = createContext<PhotoContextType | undefined>(undefined);
 export function PhotoProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(photoReducer, initialState);
 
-  // Load photos from localStorage on mount
+  // Load photos from database on mount
   useEffect(() => {
-    const savedPhotos = localStorage.getItem('photos');
-    if (savedPhotos) {
+    const loadPhotos = async () => {
       try {
-        const parsedPhotos = JSON.parse(savedPhotos).map((photo: any) => ({
-          ...photo,
-          addedAt: new Date(photo.addedAt),
-          deletedAt: photo.deletedAt ? new Date(photo.deletedAt) : undefined,
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const dbPhotos = await photoDB.getPhotos();
+        
+        // Convert database format to app format
+        const photos: Photo[] = dbPhotos.map((dbPhoto: DatabasePhoto) => ({
+          id: dbPhoto.id,
+          url: dbPhoto.url,
+          name: dbPhoto.name,
+          size: dbPhoto.size,
+          addedAt: new Date(dbPhoto.added_at),
+          deletedAt: dbPhoto.deleted_at ? new Date(dbPhoto.deleted_at) : undefined,
+          status: dbPhoto.status,
+          source: dbPhoto.source,
         }));
-        dispatch({ type: 'LOAD_PHOTOS', payload: parsedPhotos });
+        
+        dispatch({ type: 'LOAD_PHOTOS', payload: photos });
       } catch (error) {
-        console.error('Error loading photos from localStorage:', error);
+        console.error('Error loading photos from database:', error);
+        // Fallback to localStorage if database fails
+        const savedPhotos = localStorage.getItem('photos');
+        if (savedPhotos) {
+          try {
+            const parsedPhotos = JSON.parse(savedPhotos).map((photo: any) => ({
+              ...photo,
+              addedAt: new Date(photo.addedAt),
+              deletedAt: photo.deletedAt ? new Date(photo.deletedAt) : undefined,
+            }));
+            dispatch({ type: 'LOAD_PHOTOS', payload: parsedPhotos });
+          } catch (localError) {
+            console.error('Error loading photos from localStorage:', localError);
+          }
+        }
+      } finally {
+        dispatch({ type: 'SET_LOADING', payload: false });
       }
-    }
+    };
+
+    loadPhotos();
   }, []);
 
-  // Save photos to localStorage whenever photos change
+  // Save photos to localStorage as backup whenever photos change
   useEffect(() => {
     if (state.photos.length > 0) {
       localStorage.setItem('photos', JSON.stringify(state.photos));
@@ -143,11 +172,19 @@ export function PhotoProvider({ children }: { children: React.ReactNode }) {
 
   // Cleanup old deleted photos on mount and periodically
   useEffect(() => {
-    dispatch({ type: 'CLEANUP_OLD_PHOTOS' });
+    const cleanup = async () => {
+      try {
+        await photoDB.cleanupOldPhotos();
+        dispatch({ type: 'CLEANUP_OLD_PHOTOS' });
+      } catch (error) {
+        console.error('Error cleaning up old photos:', error);
+        dispatch({ type: 'CLEANUP_OLD_PHOTOS' });
+      }
+    };
     
-    const interval = setInterval(() => {
-      dispatch({ type: 'CLEANUP_OLD_PHOTOS' });
-    }, 24 * 60 * 60 * 1000); // Check daily
+    cleanup();
+    
+    const interval = setInterval(cleanup, 24 * 60 * 60 * 1000); // Check daily
     
     return () => clearInterval(interval);
   }, []);
@@ -159,39 +196,90 @@ export function PhotoProvider({ children }: { children: React.ReactNode }) {
     
     for (const file of files) {
       if (file.type.startsWith('image/')) {
-        const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const url = URL.createObjectURL(file);
-        
-        newPhotos.push({
-          id,
-          url,
-          file,
-          name: file.name,
-          size: file.size,
-          addedAt: new Date(),
-          status: 'active',
-          source,
-        });
+        try {
+          // Upload to database
+          const dbPhoto = await photoDB.uploadPhoto({
+            file,
+            name: file.name,
+            size: file.size,
+            source,
+          });
+          
+          // Convert to app format
+          const photo: Photo = {
+            id: dbPhoto.id,
+            url: dbPhoto.url,
+            file,
+            name: dbPhoto.name,
+            size: dbPhoto.size,
+            addedAt: new Date(dbPhoto.added_at),
+            status: dbPhoto.status,
+            source: dbPhoto.source,
+          };
+          
+          newPhotos.push(photo);
+        } catch (error) {
+          console.error('Error uploading photo:', error);
+          // Fallback to local storage
+          const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const url = URL.createObjectURL(file);
+          
+          newPhotos.push({
+            id,
+            url,
+            file,
+            name: file.name,
+            size: file.size,
+            addedAt: new Date(),
+            status: 'active',
+            source,
+          });
+        }
       }
     }
     
     dispatch({ type: 'ADD_PHOTOS', payload: newPhotos });
   };
 
-  const deletePhoto = (id: string) => {
-    dispatch({ type: 'DELETE_PHOTO', payload: id });
-  };
-
-  const restorePhoto = (id: string) => {
-    dispatch({ type: 'RESTORE_PHOTO', payload: id });
-  };
-
-  const permanentlyDeletePhoto = (id: string) => {
-    const photo = state.photos.find(p => p.id === id);
-    if (photo) {
-      URL.revokeObjectURL(photo.url);
+  const deletePhoto = async (id: string) => {
+    try {
+      await photoDB.deletePhoto(id);
+      dispatch({ type: 'DELETE_PHOTO', payload: id });
+    } catch (error) {
+      console.error('Error deleting photo from database:', error);
+      // Still update local state even if database fails
+      dispatch({ type: 'DELETE_PHOTO', payload: id });
     }
-    dispatch({ type: 'PERMANENTLY_DELETE_PHOTO', payload: id });
+  };
+
+  const restorePhoto = async (id: string) => {
+    try {
+      await photoDB.restorePhoto(id);
+      dispatch({ type: 'RESTORE_PHOTO', payload: id });
+    } catch (error) {
+      console.error('Error restoring photo from database:', error);
+      // Still update local state even if database fails
+      dispatch({ type: 'RESTORE_PHOTO', payload: id });
+    }
+  };
+
+  const permanentlyDeletePhoto = async (id: string) => {
+    try {
+      await photoDB.permanentlyDeletePhoto(id);
+      const photo = state.photos.find(p => p.id === id);
+      if (photo && photo.file) {
+        URL.revokeObjectURL(photo.url);
+      }
+      dispatch({ type: 'PERMANENTLY_DELETE_PHOTO', payload: id });
+    } catch (error) {
+      console.error('Error permanently deleting photo from database:', error);
+      // Still update local state even if database fails
+      const photo = state.photos.find(p => p.id === id);
+      if (photo && photo.file) {
+        URL.revokeObjectURL(photo.url);
+      }
+      dispatch({ type: 'PERMANENTLY_DELETE_PHOTO', payload: id });
+    }
   };
 
   const setSelectedPhoto = (photo: Photo | null) => {

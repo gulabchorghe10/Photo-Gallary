@@ -81,6 +81,7 @@ export function PhotoCard({ photo, onClick, showRestoreAction = false }: PhotoCa
         }}
         whileTap={{ scale: 0.95 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        onClick={onClick}
       >
         <img
           src={photo.url}
@@ -107,31 +108,22 @@ export function PhotoCard({ photo, onClick, showRestoreAction = false }: PhotoCa
           }}
           transition={{ duration: 0.2, delay: 0.1 }}
         >
-          <Button
-            variant="secondary"
-            size="sm"
-            className="h-8 w-8 p-0 bg-white/20 backdrop-blur-sm border-white/20 hover:bg-white/30"
-            onClick={onClick}
-          >
-            <Eye className="w-4 h-4 text-white" />
-          </Button>
-          
+          {/* Removed Eye (view) button */}
           {showRestoreAction ? (
             <Button
               variant="secondary"
               size="sm"
               className="h-8 w-8 p-0 bg-green-500/20 backdrop-blur-sm border-green-500/20 hover:bg-green-500/30"
-              onClick={handleRestore}
+              onClick={e => { e.stopPropagation(); handleRestore(e); }}
             >
               <RotateCcw className="w-4 h-4 text-white" />
             </Button>
           ) : null}
-          
           <Button
             variant="secondary"
             size="sm"
             className="h-8 w-8 p-0 bg-red-500/20 backdrop-blur-sm border-red-500/20 hover:bg-red-500/30"
-            onClick={handleDelete}
+            onClick={e => { e.stopPropagation(); handleDelete(e); }}
           >
             {photo.status === 'deleted' ? (
               <X className="w-4 h-4 text-white" />

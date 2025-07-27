@@ -8,13 +8,19 @@ interface PhotoGridProps {
   title?: string;
   emptyMessage?: string;
   showRestoreAction?: boolean;
+  selectable?: boolean;
+  selectedIds?: string[];
+  onSelect?: (id: string) => void;
 }
 
 export function PhotoGrid({ 
   photos, 
   title, 
   emptyMessage = "No photos here yet",
-  showRestoreAction = false 
+  showRestoreAction = false,
+  selectable = false,
+  selectedIds = [],
+  onSelect
 }: PhotoGridProps) {
   const { setSelectedPhoto } = usePhoto();
 
@@ -77,7 +83,17 @@ export function PhotoGrid({
                 y: -8,
                 transition: { type: "spring", stiffness: 400, damping: 25 }
               }}
+              className="relative"
             >
+              {selectable && (
+                <input
+                  type="checkbox"
+                  className="absolute top-2 left-2 z-10 w-5 h-5 accent-blue-600"
+                  checked={selectedIds.includes(photo.id)}
+                  onChange={() => onSelect && onSelect(photo.id)}
+                  onClick={e => e.stopPropagation()}
+                />
+              )}
               <PhotoCard
                 photo={photo}
                 onClick={() => handlePhotoClick(photo)}
