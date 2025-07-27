@@ -261,10 +261,9 @@ export function PhotoModal({ photo, isOpen, onClose, photoList, setSelectedPhoto
                   alt={photo.name}
                   className="rounded-2xl shadow-lg object-cover"
                   style={{
-                    width: '90vw',
-                    height: '90vw',
+                    height: '80vh',
+                    width: '80vh',
                     maxWidth: '90vw',
-                    maxHeight: '60vh',
                     aspectRatio: '1/1',
                     transformOrigin: '50% 50%'
                   }}
