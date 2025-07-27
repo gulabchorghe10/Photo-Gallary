@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Download, Trash2, RotateCcw, Calendar, HardDrive } from 'lucide-react';
+import { X, Download, Trash2, RotateCcw, Calendar, HardDrive, RotateCw, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { Photo, usePhoto } from '@/context/PhotoContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,8 @@ export function PhotoModal({ photo, isOpen, onClose, photoList, setSelectedPhoto
   const [origin, setOrigin] = useState<'center' | { x: number; y: number }>('center');
   const [imgRect, setImgRect] = useState<DOMRect | null>(null);
   const imgRef = React.useRef<HTMLImageElement>(null);
+  const [showDetails, setShowDetails] = useState(false);
+  // Remove rotation state and button
 
   // Reset zoom when modal closes or photo changes
   useEffect(() => {
@@ -96,6 +98,15 @@ export function PhotoModal({ photo, isOpen, onClose, photoList, setSelectedPhoto
     };
   }, [isOpen, onClose, photo, photoList, setSelectedPhoto]);
 
+  // Navigation handlers
+  const currentIdx = photoList && photo ? photoList.findIndex(p => p.id === photo.id) : -1;
+  const hasPrev = photoList && currentIdx > 0;
+  const hasNext = photoList && currentIdx < photoList.length - 1;
+  const goPrev = () => setSelectedPhoto && photoList && hasPrev && setSelectedPhoto(photoList[currentIdx - 1]);
+  const goNext = () => setSelectedPhoto && photoList && hasNext && setSelectedPhoto(photoList[currentIdx + 1]);
+
+  // Remove handleZoom and sticky nav panel, restore previous image and nav button layout
+
   if (!photo) return null;
 
   const { addedText, deletedText } = getPhotoTimeInfo(photo);
@@ -164,7 +175,7 @@ export function PhotoModal({ photo, isOpen, onClose, photoList, setSelectedPhoto
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="relative max-w-5xl max-h-[90vh] mx-4 bg-background rounded-2xl shadow-2xl overflow-hidden"
+            className="relative max-w-[90vw] max-h-[90vh] mx-2 sm:mx-4 bg-background rounded-2xl shadow-2xl overflow-hidden flex flex-col sm:flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -180,8 +191,16 @@ export function PhotoModal({ photo, isOpen, onClose, photoList, setSelectedPhoto
                   </span>
                 )}
               </div>
-              
               <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDetails(v => !v)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <Info className="w-4 h-4" />
+                  <span className="ml-1 hidden sm:inline">Details</span>
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -190,7 +209,6 @@ export function PhotoModal({ photo, isOpen, onClose, photoList, setSelectedPhoto
                 >
                   <Download className="w-4 h-4" />
                 </Button>
-                
                 {photo.status === 'deleted' ? (
                   <Button
                     variant="ghost"
@@ -210,7 +228,6 @@ export function PhotoModal({ photo, isOpen, onClose, photoList, setSelectedPhoto
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 )}
-                
                 <Button
                   variant="ghost"
                   size="sm"
@@ -221,51 +238,38 @@ export function PhotoModal({ photo, isOpen, onClose, photoList, setSelectedPhoto
                 </Button>
               </div>
             </div>
-            
-            {/* Image */}
-            <div className="flex">
-              <div className="flex-1 flex items-center justify-center p-4 bg-gallery-bg relative">
-                {/* Zoom controls */}
-                <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                  <button
-                    className="w-10 h-10 rounded-full bg-white/80 hover:bg-white text-2xl font-bold shadow border border-gray-200"
-                    onClick={e => {
-                      if (imgRect) {
-                        setOrigin(origin === 'center' ? 'center' : origin);
-                      }
-                      setZoom(z => Math.min(z + 0.2, 3));
-                    }}
-                    aria-label="Zoom in"
-                  >
-                    +
-                  </button>
-                  <button
-                    className="w-10 h-10 rounded-full bg-white/80 hover:bg-white text-2xl font-bold shadow border border-gray-200"
-                    onClick={e => {
-                      if (imgRect) {
-                        setOrigin(origin === 'center' ? 'center' : origin);
-                      }
-                      setZoom(z => Math.max(z - 0.2, 0.5));
-                    }}
-                    aria-label="Zoom out"
-                  >
-                    –
-                  </button>
-                </div>
+            {/* Main content row: nav btn | image | nav btn | details */}
+            <div className="flex-1 flex flex-col sm:flex-row items-center justify-center relative w-full h-full">
+              {/* Left nav button (mobile: absolute, desktop: relative) */}
+              {hasPrev && (
+                <button
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/80 hover:bg-white flex items-center justify-center shadow border border-gray-200"
+                  onClick={goPrev}
+                  aria-label="Previous photo"
+                >
+                  <ChevronLeft className="w-6 h-6 sm:w-8 sm:h-8" />
+                </button>
+              )}
+              {/* Image */}
+              <div className="flex-1 flex items-center justify-center relative w-full">
                 <motion.img
                   ref={imgRef}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: zoom }}
+                  initial={{ opacity: 0, scale: 0.95, rotate: 0 }}
+                  animate={{ opacity: 1, scale: zoom, rotate: 0 }}
                   transition={{ delay: 0.1 }}
                   src={photo.url}
                   alt={photo.name}
-                  className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-lg"
+                  className="rounded-2xl shadow-lg object-cover"
                   style={{
-                    transform: `scale(${zoom})`,
-                    transformOrigin: origin === 'center' ? '50% 50%' : `${origin.x}% ${origin.y}%`
+                    width: '90vw',
+                    height: '90vw',
+                    maxWidth: '90vw',
+                    maxHeight: '60vh',
+                    aspectRatio: '1/1',
+                    transformOrigin: '50% 50%'
                   }}
                   onMouseMove={handlePointerMove}
-                  onTouchMove={handlePointerMove}
+                  onWheel={e => setZoom(z => Math.max(0.5, Math.min(z + (e.deltaY < 0 ? 0.2 : -0.2), 3)))}
                   onMouseDown={e => {
                     if (imgRef.current) setImgRect(imgRef.current.getBoundingClientRect());
                   }}
@@ -273,95 +277,123 @@ export function PhotoModal({ photo, isOpen, onClose, photoList, setSelectedPhoto
                     if (imgRef.current) setImgRect(imgRef.current.getBoundingClientRect());
                   }}
                 />
+                {/* Zoom controls: bottom left, larger on mobile */}
+                <div className="absolute left-2 bottom-2 z-10 flex flex-col gap-2">
+                  <button
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/80 hover:bg-white text-2xl font-bold shadow border border-gray-200"
+                    onClick={e => setZoom(z => Math.min(z + 0.2, 3))}
+                    aria-label="Zoom in"
+                  >
+                    +
+                  </button>
+                  <button
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/80 hover:bg-white text-2xl font-bold shadow border border-gray-200"
+                    onClick={e => setZoom(z => Math.max(z - 0.2, 0.5))}
+                    aria-label="Zoom out"
+                  >
+                    –
+                  </button>
+                </div>
               </div>
-              
-              {/* Sidebar with metadata */}
-              <div className="w-80 bg-card border-l p-6 space-y-6">
-                <div>
-                  <h3 className="font-semibold text-foreground mb-4">Photo Details</h3>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-start space-x-3">
-                      <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Added</p>
-                        <p className="font-medium text-foreground">{addedText}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {photo.addedAt.toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                    </div>
+              {/* Right nav button */}
+              {hasNext && (
+                <button
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/80 hover:bg-white flex items-center justify-center shadow border border-gray-200"
+                  onClick={goNext}
+                  aria-label="Next photo"
+                >
+                  <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8" />
+                </button>
+              )}
+              {/* Details panel: below image on mobile, sidebar on desktop */}
+              {showDetails && (
+                <div className="w-full sm:w-80 bg-card border-t sm:border-t-0 sm:border-l p-4 sm:p-6 space-y-6 max-h-[40vh] sm:max-h-[80vh] overflow-y-auto absolute sm:static left-0 bottom-0 sm:right-0 sm:top-0 z-10 rounded-b-2xl sm:rounded-l-2xl">
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-4">Photo Details</h3>
                     
-                    {deletedText && (
+                    <div className="space-y-4">
                       <div className="flex items-start space-x-3">
-                        <Trash2 className="w-5 h-5 text-red-500 mt-0.5" />
+                        <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
                         <div>
-                          <p className="text-sm text-muted-foreground">Deleted</p>
-                          <p className="font-medium text-red-600">{deletedText}</p>
-                          {photo.deletedAt && (
-                            <p className="text-xs text-muted-foreground">
-                              {photo.deletedAt.toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </p>
-                          )}
+                          <p className="text-sm text-muted-foreground">Added</p>
+                          <p className="font-medium text-foreground">{addedText}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {photo.addedAt.toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
                         </div>
                       </div>
-                    )}
-                    
-                    <div className="flex items-start space-x-3">
-                      <HardDrive className="w-5 h-5 text-muted-foreground mt-0.5" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">File size</p>
-                        <p className="font-medium text-foreground">{formatFileSize(photo.size)}</p>
+                      
+                      {deletedText && (
+                        <div className="flex items-start space-x-3">
+                          <Trash2 className="w-5 h-5 text-red-500 mt-0.5" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Deleted</p>
+                            <p className="font-medium text-red-600">{deletedText}</p>
+                            {photo.deletedAt && (
+                              <p className="text-xs text-muted-foreground">
+                                {photo.deletedAt.toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-start space-x-3">
+                        <HardDrive className="w-5 h-5 text-muted-foreground mt-0.5" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">File size</p>
+                          <p className="font-medium text-foreground">{formatFileSize(photo.size)}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                
-                <div className="pt-4 border-t">
-                  <div className="flex flex-col space-y-3">
-                    <Button
-                      onClick={handleDownload}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Download
-                    </Button>
-                    
-                    {photo.status === 'deleted' ? (
+                  
+                  <div className="pt-4 border-t">
+                    <div className="flex flex-col space-y-3">
                       <Button
-                        onClick={handleRestore}
+                        onClick={handleDownload}
                         variant="outline"
-                        className="w-full text-green-600 border-green-200 hover:bg-green-50 dark:hover:bg-green-900/20"
+                        className="w-full"
                       >
-                        <RotateCcw className="w-4 h-4 mr-2" />
-                        Restore Photo
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
                       </Button>
-                    ) : (
-                      <Button
-                        onClick={handleDelete}
-                        variant="outline"
-                        className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Move to Trash
-                      </Button>
-                    )}
+                      
+                      {photo.status === 'deleted' ? (
+                        <Button
+                          onClick={handleRestore}
+                          variant="outline"
+                          className="w-full text-green-600 border-green-200 hover:bg-green-50 dark:hover:bg-green-900/20"
+                        >
+                          <RotateCcw className="w-4 h-4 mr-2" />
+                          Restore Photo
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={handleDelete}
+                          variant="outline"
+                          className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Move to Trash
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </motion.div>
         </motion.div>

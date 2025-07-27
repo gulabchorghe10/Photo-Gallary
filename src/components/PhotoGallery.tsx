@@ -8,27 +8,24 @@ import { PhotoModal } from './PhotoModal';
 import { CameraCapture } from './CameraCapture';
 import { Trash2, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { startOfDay, isToday, isThisWeek, isThisMonth, format } from 'date-fns';
+import { isToday, isYesterday, format } from 'date-fns';
 
-function groupPhotosByDate(photos) {
+function groupPhotosByDay(photos) {
   const today = [];
-  const thisWeek = [];
-  const thisMonth = [];
-  const older = {};
+  const yesterday = [];
+  const byDate = {};
   photos.forEach(photo => {
     if (isToday(photo.addedAt)) {
       today.push(photo);
-    } else if (isThisWeek(photo.addedAt)) {
-      thisWeek.push(photo);
-    } else if (isThisMonth(photo.addedAt)) {
-      thisMonth.push(photo);
+    } else if (isYesterday(photo.addedAt)) {
+      yesterday.push(photo);
     } else {
       const dateStr = format(photo.addedAt, 'yyyy-MM-dd');
-      if (!older[dateStr]) older[dateStr] = [];
-      older[dateStr].push(photo);
+      if (!byDate[dateStr]) byDate[dateStr] = [];
+      byDate[dateStr].push(photo);
     }
   });
-  return { today, thisWeek, thisMonth, older };
+  return { today, yesterday, byDate };
 }
 
 function GalleryContent() {
@@ -93,12 +90,11 @@ function GalleryContent() {
               <PhotoUpload />
               {/* Grouped photo sections */}
               {(() => {
-                const { today, thisWeek, thisMonth, older } = groupPhotosByDate(uploadedPhotos);
+                const { today, yesterday, byDate } = groupPhotosByDay(uploadedPhotos);
                 return <>
                   {today.length > 0 && <PhotoGrid title="Today" photos={today} />}
-                  {thisWeek.length > 0 && <PhotoGrid title="This Week" photos={thisWeek} />}
-                  {thisMonth.length > 0 && <PhotoGrid title="This Month" photos={thisMonth} />}
-                  {Object.entries(older).map(([date, photos]) => (
+                  {yesterday.length > 0 && <PhotoGrid title="Yesterday" photos={yesterday} />}
+                  {Object.entries(byDate).map(([date, photos]) => (
                     <PhotoGrid key={date} title={date} photos={photos} />
                   ))}
                   {uploadedPhotos.length === 0 && !state.loading && (
