@@ -243,7 +243,7 @@ export function PhotoModal({ photo, isOpen, onClose, photoList, setSelectedPhoto
               {/* Left nav button (mobile: absolute, desktop: relative) */}
               {hasPrev && (
                 <button
-                  className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/80 hover:bg-white flex items-center justify-center shadow border border-gray-200"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/40 hover:bg-white/60 flex items-center justify-center shadow border border-gray-200 transition-opacity opacity-60 hover:opacity-100"
                   onClick={goPrev}
                   aria-label="Previous photo"
                 >
@@ -259,12 +259,12 @@ export function PhotoModal({ photo, isOpen, onClose, photoList, setSelectedPhoto
                   transition={{ delay: 0.1 }}
                   src={photo.url}
                   alt={photo.name}
-                  className="rounded-2xl shadow-lg object-cover"
+                  className="rounded-2xl shadow-lg object-contain"
                   style={{
                     height: '80vh',
-                    width: '80vh',
-                    maxWidth: '90vw',
-                    aspectRatio: '1/1',
+                    width: '45vw',
+                    maxWidth: '45vw',
+                    maxHeight: '80vh',
                     transformOrigin: '50% 50%'
                   }}
                   onMouseMove={handlePointerMove}
@@ -279,14 +279,14 @@ export function PhotoModal({ photo, isOpen, onClose, photoList, setSelectedPhoto
                 {/* Zoom controls: bottom left, larger on mobile */}
                 <div className="absolute left-2 bottom-2 z-10 flex flex-col gap-2">
                   <button
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/80 hover:bg-white text-2xl font-bold shadow border border-gray-200"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/40 hover:bg-white/60 text-2xl font-bold shadow border border-gray-200 transition-opacity opacity-60 hover:opacity-100"
                     onClick={e => setZoom(z => Math.min(z + 0.2, 3))}
                     aria-label="Zoom in"
                   >
                     +
                   </button>
                   <button
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/80 hover:bg-white text-2xl font-bold shadow border border-gray-200"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/40 hover:bg-white/60 text-2xl font-bold shadow border border-gray-200 transition-opacity opacity-60 hover:opacity-100"
                     onClick={e => setZoom(z => Math.max(z - 0.2, 0.5))}
                     aria-label="Zoom out"
                   >
@@ -297,7 +297,7 @@ export function PhotoModal({ photo, isOpen, onClose, photoList, setSelectedPhoto
               {/* Right nav button */}
               {hasNext && (
                 <button
-                  className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/80 hover:bg-white flex items-center justify-center shadow border border-gray-200"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/40 hover:bg-white/60 flex items-center justify-center shadow border border-gray-200 transition-opacity opacity-60 hover:opacity-100"
                   onClick={goNext}
                   aria-label="Next photo"
                 >
