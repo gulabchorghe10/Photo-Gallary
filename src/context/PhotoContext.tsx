@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { photoDB } from '@/lib/database';
 import { DatabasePhoto } from '@/lib/supabase';
+import { compressImage } from '@/lib/imageCompression';
 
 export interface Photo {
   id: string;
@@ -197,11 +198,19 @@ export function PhotoProvider({ children }: { children: React.ReactNode }) {
     for (const file of files) {
       if (file.type.startsWith('image/')) {
         try {
+          // Compress image before uploading
+          const compressedFile = await compressImage(file, {
+            maxWidth: source === 'camera' ? 1920 : 1920,
+            maxHeight: source === 'camera' ? 1080 : 1080,
+            quality: source === 'camera' ? 0.9 : 0.8,
+            format: 'jpeg'
+          });
+          
           // Upload to database
           const dbPhoto = await photoDB.uploadPhoto({
-            file,
-            name: file.name,
-            size: file.size,
+            file: compressedFile,
+            name: compressedFile.name,
+            size: compressedFile.size,
             source,
           });
           
@@ -209,7 +218,7 @@ export function PhotoProvider({ children }: { children: React.ReactNode }) {
           const photo: Photo = {
             id: dbPhoto.id,
             url: dbPhoto.url,
-            file,
+            file: compressedFile,
             name: dbPhoto.name,
             size: dbPhoto.size,
             addedAt: new Date(dbPhoto.added_at),
@@ -220,20 +229,45 @@ export function PhotoProvider({ children }: { children: React.ReactNode }) {
           newPhotos.push(photo);
         } catch (error) {
           console.error('Error uploading photo:', error);
-          // Fallback to local storage
-          const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          const url = URL.createObjectURL(file);
-          
-          newPhotos.push({
-            id,
-            url,
-            file,
-            name: file.name,
-            size: file.size,
-            addedAt: new Date(),
-            status: 'active',
-            source,
-          });
+          // Fallback to local storage with compression
+          try {
+            const compressedFile = await compressImage(file, {
+              maxWidth: source === 'camera' ? 1920 : 1920,
+              maxHeight: source === 'camera' ? 1080 : 1080,
+              quality: source === 'camera' ? 0.9 : 0.8,
+              format: 'jpeg'
+            });
+            
+            const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const url = URL.createObjectURL(compressedFile);
+            
+            newPhotos.push({
+              id,
+              url,
+              file: compressedFile,
+              name: compressedFile.name,
+              size: compressedFile.size,
+              addedAt: new Date(),
+              status: 'active',
+              source,
+            });
+          } catch (compressionError) {
+            console.error('Error compressing photo:', compressionError);
+            // Final fallback with original file
+            const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const url = URL.createObjectURL(file);
+            
+            newPhotos.push({
+              id,
+              url,
+              file,
+              name: file.name,
+              size: file.size,
+              addedAt: new Date(),
+              status: 'active',
+              source,
+            });
+          }
         }
       }
     }

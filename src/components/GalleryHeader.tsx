@@ -5,8 +5,8 @@ import { ThemeToggle } from './ThemeToggle';
 import { usePhoto } from '@/context/PhotoContext';
 
 interface GalleryHeaderProps {
-  currentView: 'gallery' | 'trash' | 'camera';
-  onViewChange: (view: 'gallery' | 'trash' | 'camera') => void;
+  currentView: 'uploads' | 'trash' | 'camera';
+  onViewChange: (view: 'uploads' | 'trash' | 'camera') => void;
   onCameraClick: () => void;
 }
 
@@ -57,11 +57,11 @@ export function GalleryHeader({ currentView, onViewChange, onCameraClick }: Gall
           {/* Navigation tabs and theme toggle (desktop) */}
           <div className="hidden sm:flex w-full sm:w-auto items-center justify-center sm:justify-end space-x-1 bg-muted rounded-lg p-1">
             <button
-              onClick={() => onViewChange('gallery')}
+              onClick={() => onViewChange('uploads')}
               className={`
                 flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium
                 transition-all duration-200 relative
-                ${currentView === 'gallery'
+                ${currentView === 'uploads'
                   ? 'text-primary-foreground bg-primary shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
                 }
@@ -123,8 +123,8 @@ export function GalleryHeader({ currentView, onViewChange, onCameraClick }: Gall
             <div className="sm:hidden absolute top-16 left-0 w-full bg-background border-b border-muted shadow-lg z-50 flex flex-col items-center space-y-2 py-4 animate-fade-in">
               <div className="flex flex-col w-full items-center space-y-2">
                 <button
-                  onClick={() => { onViewChange('gallery'); setMobileMenuOpen(false); }}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium w-11/12 justify-center ${currentView === 'gallery' ? 'text-primary-foreground bg-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  onClick={() => { onViewChange('uploads'); setMobileMenuOpen(false); }}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium w-11/12 justify-center ${currentView === 'uploads' ? 'text-primary-foreground bg-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   <Camera className="w-4 h-4" />
                   <span>Uploads</span>

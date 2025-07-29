@@ -4,6 +4,7 @@ import { Trash2, RotateCcw, X, Eye } from 'lucide-react';
 import { Photo, usePhoto } from '@/context/PhotoContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { formatFileSize } from '@/lib/imageCompression';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,14 +60,6 @@ export function PhotoCard({ photo, onClick, showRestoreAction = false }: PhotoCa
       description: "This action cannot be undone.",
       variant: "destructive",
     });
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   return (

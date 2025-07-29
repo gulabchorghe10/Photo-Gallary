@@ -29,14 +29,19 @@ function groupPhotosByDay(photos) {
 }
 
 function GalleryContent() {
-  const [currentView, setCurrentView] = useState<'gallery' | 'trash' | 'camera'>('gallery');
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const { state, setSelectedPhoto, getActivePhotos, getDeletedPhotos, getCameraPhotos, getUploadedPhotos, permanentlyDeletePhoto } = usePhoto();
+  const { state, getActivePhotos, getDeletedPhotos, getCameraPhotos, getUploadedPhotos, setSelectedPhoto, deletePhoto, restorePhoto, permanentlyDeletePhoto } = usePhoto();
+  const [currentView, setCurrentView] = useState<'uploads' | 'camera' | 'trash'>('uploads');
+  const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
+  const [showCameraCapture, setShowCameraCapture] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const activePhotos = getActivePhotos();
   const deletedPhotos = getDeletedPhotos();
   const cameraPhotos = getCameraPhotos();
   const uploadedPhotos = getUploadedPhotos();
+  
+  // Include camera photos in uploads for date grouping
+  const allPhotosForGrouping = [...uploadedPhotos, ...cameraPhotos];
 
   // Selection state for trash
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -59,11 +64,11 @@ function GalleryContent() {
   };
 
   const handleCameraClick = () => {
-    setIsCameraOpen(true);
+    setShowCameraCapture(true);
   };
 
   const handleCloseCameraCapture = () => {
-    setIsCameraOpen(false);
+    setShowCameraCapture(false);
   };
 
   const navigate = useNavigate();
@@ -78,9 +83,9 @@ function GalleryContent() {
       
       <main className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-20">
         <AnimatePresence mode="wait">
-          {currentView === 'gallery' ? (
+          {currentView === 'uploads' ? (
             <motion.div
-              key="gallery"
+              key="uploads"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -90,14 +95,14 @@ function GalleryContent() {
               <PhotoUpload />
               {/* Grouped photo sections */}
               {(() => {
-                const { today, yesterday, byDate } = groupPhotosByDay(uploadedPhotos);
+                const { today, yesterday, byDate } = groupPhotosByDay(allPhotosForGrouping);
                 return <>
                   {today.length > 0 && <PhotoGrid title="Today" photos={today} />}
                   {yesterday.length > 0 && <PhotoGrid title="Yesterday" photos={yesterday} />}
                   {Object.entries(byDate).map(([date, photos]) => (
                     <PhotoGrid key={date} title={date} photos={photos} />
                   ))}
-                  {uploadedPhotos.length === 0 && !state.loading && (
+                  {allPhotosForGrouping.length === 0 && !state.loading && (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -105,10 +110,10 @@ function GalleryContent() {
                     >
                       <Camera className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                       <h3 className="text-xl font-semibold text-foreground mb-2">
-                        No uploaded photos yet
+                        No photos yet
                       </h3>
                       <p className="text-muted-foreground">
-                        Upload your first photos to start building your collection
+                        Upload photos or use the camera to start building your collection
                       </p>
                     </motion.div>
                   )}
@@ -239,7 +244,7 @@ function GalleryContent() {
         isOpen={!!state.selectedPhoto}
         onClose={handleCloseModal}
         photoList={
-          currentView === 'gallery' ? uploadedPhotos :
+          currentView === 'uploads' ? allPhotosForGrouping :
           currentView === 'camera' ? cameraPhotos :
           currentView === 'trash' ? deletedPhotos :
           []
@@ -249,7 +254,7 @@ function GalleryContent() {
 
       {/* Camera capture */}
       <CameraCapture
-        isOpen={isCameraOpen}
+        isOpen={showCameraCapture}
         onClose={handleCloseCameraCapture}
       />
     </div>
